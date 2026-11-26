@@ -1,4 +1,4 @@
-const CACHE_NAME = 'radio-xiviot-v1';
+const CACHE_NAME = 'radio-xiviot-v2';
 
 function getScopeBase() {
   return self.registration ? self.registration.scope : self.location.origin + '/';
@@ -10,6 +10,8 @@ self.addEventListener('install', (event) => {
     base,
     `${base}index.html`,
     `${base}manifest.webmanifest`,
+    `${base}favicon.ico`,
+    `${base}favicon-32x32.png`,
     `${base}icon.svg`,
     `${base}logo.png`,
     `${base}pwa-192x192.png`,

@@ -724,6 +724,7 @@ class RadioApp {
     this.selectedStation = station;
     this.copiedFeedback = false;
     this.map.setSelectedStation(station.stationuuid);
+    document.title = `${station.name} · Radio by XivIoT`;
 
     if (station.geo_lat !== null && station.geo_long !== null) {
       this.map.flyTo(station.geo_lat, station.geo_long, fromList ? 10 : undefined);
@@ -738,6 +739,7 @@ class RadioApp {
 
   private handlePlayStation(station: Station): void {
     this.recents = pushRecentStation(station);
+    document.title = `${station.name} · Radio by XivIoT`;
     this.player.playStation(station);
   }
 

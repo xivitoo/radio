@@ -3,40 +3,64 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Radio by XivIoT – Emisoras en directo y mapa mundial</title>
+    <title>Radio by XivIoT – Radio Online en Directo y Mapa Mundial</title>
     <meta
       name="description"
-      content="Sintoniza miles de emisoras de radio online en directo, explora radios en el mapa interactivo mundial y guarda tus favoritas incluso offline con Radio by XivIoT."
+      content="Escucha miles de emisoras de radio online en directo gratis, explora radios en el mapa mundial interactivo y guarda tus favoritas incluso offline."
     />
+    <meta
+      name="keywords"
+      content="radio online, radio en directo, escuchar radio gratis, emisoras de radio españa, mapa de radios, radio fm online, radio internacional, radio por internet, radio by xiviot"
+    />
+    <meta name="author" content="XivIoT" />
+    <meta name="creator" content="XivIoT" />
+    <meta name="publisher" content="XivIoT" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1" />
+
+    <link rel="canonical" href="https://xivitoo.github.io/radio/" />
+    <link rel="alternate" hreflang="es" href="https://xivitoo.github.io/radio/" />
+    <link rel="alternate" hreflang="x-default" href="https://xivitoo.github.io/radio/" />
+
     <meta name="theme-color" content="#1e2432" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="application-name" content="Radio by XivIoT" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Radio XivIoT" />
 
     <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <link rel="icon" href="%BASE_URL%favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="%BASE_URL%favicon-32x32.png" />
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%icon.svg" />
-    <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="%BASE_URL%apple-touch-icon.png" />
 
     <!-- OpenGraph -->
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_ES" />
     <meta property="og:site_name" content="Radio by XivIoT" />
-    <meta property="og:title" content="Radio by XivIoT – Emisoras en directo y mapa mundial" />
+    <meta property="og:title" content="Radio by XivIoT – Radio Online en Directo y Mapa Mundial" />
     <meta
       property="og:description"
-      content="Explora emisoras de radio en directo sobre el mapa mundial, filtra por música, noticias o deportes y guarda tus favoritas."
+      content="Explora emisoras de radio online en directo sobre el mapa mundial, filtra por música, noticias o deportes y guarda tus favoritas."
     />
     <meta property="og:url" content="https://xivitoo.github.io/radio/" />
     <meta property="og:image" content="https://xivitoo.github.io/radio/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Logotipo de Radio by XivIoT con antena, micrófono, ecualizador y auriculares" />
 
-    <!-- Twitter Card -->
+    <!-- Twitter / X Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Radio by XivIoT – Emisoras en directo y mapa mundial" />
+    <meta name="twitter:title" content="Radio by XivIoT – Radio Online en Directo y Mapa Mundial" />
     <meta
       name="twitter:description"
       content="Sintoniza emisoras verificadas de todo el mundo con mapa interactivo, reproductor persistente y modo offline."
     />
     <meta name="twitter:image" content="https://xivitoo.github.io/radio/og-image.png" />
+    <meta name="twitter:image:alt" content="Radio by XivIoT" />
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -69,12 +93,31 @@
         "@graph": [
           {
             "@type": "WebApplication",
+            "@id": "https://xivitoo.github.io/radio/#app",
             "name": "Radio by XivIoT",
+            "alternateName": "Radio XivIoT",
             "url": "https://xivitoo.github.io/radio/",
+            "image": "https://xivitoo.github.io/radio/og-image.png",
+            "screenshot": "https://xivitoo.github.io/radio/og-image.png",
             "applicationCategory": "MultimediaApplication",
+            "applicationSubCategory": "Internet Radio Player",
             "operatingSystem": "All",
+            "browserRequirements": "Requires HTML5 Audio and JavaScript",
             "inLanguage": "es",
-            "description": "Aplicación web progresiva para escuchar emisoras de radio en directo de todo el mundo sobre un mapa interactivo.",
+            "isAccessibleForFree": true,
+            "author": {
+              "@type": "Organization",
+              "name": "XivIoT",
+              "url": "https://xivitoo.github.io/radio/"
+            },
+            "featureList": [
+              "Mapa mundial interactivo de emisoras de radio",
+              "Reproductor en directo con controles en pantalla bloqueada y Android Auto",
+              "Temporizador de apagado automático de 15, 30 y 60 minutos",
+              "Filtros instantáneos por música, noticias y deportes",
+              "Favoritas con etiquetas rápidas y respaldo Offline"
+            ],
+            "description": "Aplicación web progresiva para escuchar emisoras de radio online en directo de todo el mundo sobre un mapa interactivo.",
             "offers": {
               "@type": "Offer",
               "price": "0",
@@ -83,9 +126,25 @@
           },
           {
             "@type": "WebSite",
+            "@id": "https://xivitoo.github.io/radio/#website",
             "name": "Radio by XivIoT",
             "url": "https://xivitoo.github.io/radio/",
-            "inLanguage": "es"
+            "inLanguage": "es",
+            "publisher": {
+              "@type": "Organization",
+              "name": "XivIoT"
+            }
+          },
+          {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Radio by XivIoT",
+                "item": "https://xivitoo.github.io/radio/"
+              }
+            ]
           },
           {
             "@type": "FAQPage",
@@ -95,23 +154,31 @@
                 "name": "¿Cómo escucho emisoras de otro país en Radio by XivIoT?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Pulsa el botón del país situado en la esquina superior izquierda del mapa para elegir cualquier país y cargar sus emisoras verificadas al instante."
+                  "text": "Pulsa el selector de país en la parte superior izquierda del mapa para elegir España, México, Argentina, Colombia, Chile, EE. UU., Reino Unido o cualquier otro país y cargar sus emisoras verificadas al instante."
                 }
               },
               {
                 "@type": "Question",
-                "name": "¿Puedo instalar Radio by XivIoT en mi móvil?",
+                "name": "¿Puedo instalar Radio by XivIoT como aplicación en Android, iOS o escritorio?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Sí, es una aplicación web progresiva compatible con Android, escritorio y Safari en iOS mediante la opción Instalar o Añadir a pantalla de inicio."
+                  "text": "Sí, es una aplicación web progresiva (PWA) instalable con icono nativo desde Chrome, Edge o mediante Añadir a pantalla de inicio en Safari para iPhone y iPad."
                 }
               },
               {
                 "@type": "Question",
-                "name": "¿Qué ocurre si pierdo la conexión a internet?",
+                "name": "¿Qué pasa si no tengo conexión a internet?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "La aplicación conserva tus emisoras favoritas y te permite consultar la última lista guardada o el respaldo Offline hasta recuperar la conexión Online."
+                  "text": "Radio by XivIoT conserva tus emisoras favoritas y te ofrece acceso inmediato a los últimos datos guardados o al respaldo Offline hasta que recuperes la conexión Online."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "¿Cómo comparto una emisora concreta con otra persona?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Abre el detalle de cualquier emisora y pulsa Compartir por WhatsApp o Copiar enlace para enviar un enlace directo que abre y sintoniza esa estación automáticamente."
                 }
               }
             ]
@@ -122,6 +189,16 @@
   </head>
   <body class="h-full overflow-hidden antialiased bg-slate-50 text-slate-900 dark:bg-[#1e2432] dark:text-slate-100">
     <div id="app" class="h-full w-full"></div>
+    <noscript>
+      <main style="max-width:680px;margin:48px auto;padding:24px;font-family:sans-serif;line-height:1.6;">
+        <h1>Radio by XivIoT – Radio Online en Directo y Mapa Mundial</h1>
+        <p>
+          Escucha emisoras de radio online en directo de España, México, Argentina, Colombia, Chile, Estados Unidos,
+          Reino Unido y todo el mundo sobre un mapa interactivo con modo oscuro, temporizador y favoritas.
+        </p>
+        <p>Activa JavaScript en tu navegador para explorar las emisoras en el mapa y reproducir audio en directo.</p>
+      </main>
+    </noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
