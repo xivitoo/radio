@@ -111,7 +111,7 @@ export class CanvasMap {
     // Accessible zoom controls
     const zoomGroup = document.createElement('div');
     zoomGroup.className =
-      'absolute right-3 bottom-24 lg:bottom-5 z-20 flex flex-col rounded-2xl overflow-hidden border border-slate-200/90 dark:border-[#343e52] bg-white/95 dark:bg-[#242c3c]/95 shadow-lg backdrop-blur-md';
+      'absolute right-3.5 bottom-[152px] lg:right-6 lg:bottom-6 z-20 flex flex-col rounded-2xl overflow-hidden border border-slate-200/90 dark:border-[#343e52] bg-white/95 dark:bg-[#242c3c]/95 shadow-lg backdrop-blur-md';
 
     this.zoomInBtn = document.createElement('button');
     this.zoomInBtn.type = 'button';

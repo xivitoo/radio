@@ -10,6 +10,7 @@ import type {
 } from '../types';
 import {distanceKm, escapeHtml, formatCodec, formatTags, sanitizeExternalUrl} from '../utils/geo';
 import {icons} from '../utils/icons';
+import {renderStationAvatar as renderAvatar} from '../utils/stationAvatar';
 
 export interface PanelViewState {
   activeTab: TabId;
@@ -43,12 +44,8 @@ export interface PanelActions {
   onCopyDeepLink: (station: Station) => void;
 }
 
-export function renderStationAvatar(station: Station, sizeClass = 'w-10 h-10'): string {
-  const safeFav = sanitizeExternalUrl(station.favicon);
-  if (safeFav) {
-    return `<img src="${escapeHtml(safeFav)}" alt="" referrerpolicy="no-referrer" class="${sizeClass} rounded-xl object-cover bg-slate-100 dark:bg-[#2a3346] shrink-0" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="hidden ${sizeClass} rounded-xl bg-emerald-50 dark:bg-[#2a3346] text-emerald-700 dark:text-[#6ee7b7] items-center justify-center shrink-0">${icons.radio('w-5 h-5')}</div>`;
-  }
-  return `<div class="${sizeClass} rounded-xl bg-emerald-50 dark:bg-[#2a3346] text-emerald-700 dark:text-[#6ee7b7] flex items-center justify-center shrink-0">${icons.radio('w-5 h-5')}</div>`;
+export function renderStationAvatar(station: Station, sizeClass = 'w-10 h-10', tryFavicon = false): string {
+  return renderAvatar(station, sizeClass, tryFavicon);
 }
 
 function buildConnectionBanner(mode: ConnectionMode): string {
@@ -184,7 +181,7 @@ function renderDetailView(st: Station, state: PanelViewState): string {
       </div>
 
       <div class="flex items-center gap-3.5">
-        ${renderStationAvatar(st, 'w-14 h-14')}
+        ${renderStationAvatar(st, 'w-14 h-14', true)}
         <div class="min-w-0 flex-1">
           <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100 leading-snug break-words">${escapeHtml(st.name)}</h2>
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">

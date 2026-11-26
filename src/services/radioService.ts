@@ -90,6 +90,12 @@ export function hydrateStation(raw: RawStation): Station | null {
   if (!isHttpsStream && !isHttpStream) return null;
   if (isHttpsPage && !isHttpsStream) return null;
 
+  const lowerUrl = resolved.toLowerCase();
+  const codec = (raw.codec || '').toUpperCase().trim();
+  // Exclude unsupported container/playlist URLs that browsers cannot decode directly
+  if (/\.(pls|m3u|asx|ram|wax)(\?|$)/i.test(lowerUrl)) return null;
+  if (codec === 'FLV' || codec === 'UNKNOWN' && lowerUrl.endsWith('/chunks.m3u8')) return null;
+
   const lat = typeof raw.geo_lat === 'number' && Number.isFinite(raw.geo_lat) ? raw.geo_lat : null;
   const lng = typeof raw.geo_long === 'number' && Number.isFinite(raw.geo_long) ? raw.geo_long : null;
   const mercator = lat !== null && lng !== null ? latLonToMercator(lat, lng) : null;
@@ -108,7 +114,7 @@ export function hydrateStation(raw: RawStation): Station | null {
     language: (raw.language || '').trim(),
     votes: Number(raw.votes) || 0,
     clickcount: Number(raw.clickcount) || 0,
-    codec: (raw.codec || '').toUpperCase().trim(),
+    codec,
     bitrate: Number(raw.bitrate) || 0,
     geo_lat: lat,
     geo_long: lng,
@@ -123,7 +129,8 @@ export function hydrateStation(raw: RawStation): Station | null {
 
 function normalizeAndSortStations(rawList: RawStation[]): Station[] {
   const seenUrls = new Set<string>();
-  const httpsList: Station[] = [];
+  const httpsDirectList: Station[] = [];
+  const httpsHlsList: Station[] = [];
   const httpFallbackList: Station[] = [];
 
   for (const item of rawList) {
@@ -134,17 +141,30 @@ function normalizeAndSortStations(rawList: RawStation[]): Station[] {
     seenUrls.add(station.url_resolved);
 
     if (station.url_resolved.startsWith('https://')) {
-      httpsList.push(station);
+      if (station.url_resolved.toLowerCase().includes('.m3u8')) {
+        httpsHlsList.push(station);
+      } else {
+        httpsDirectList.push(station);
+      }
     } else {
       httpFallbackList.push(station);
     }
   }
 
   const score = (s: Station) => s.clickcount + s.votes * 2;
-  httpsList.sort((a, b) => score(b) - score(a));
+  httpsDirectList.sort((a, b) => score(b) - score(a));
+  httpsHlsList.sort((a, b) => score(b) - score(a));
   httpFallbackList.sort((a, b) => score(b) - score(a));
 
-  return httpsList.length >= 10 ? httpsList.slice(0, 500) : [...httpsList, ...httpFallbackList].slice(0, 500);
+  const httpsCombined = [...httpsDirectList, ...httpsHlsList].sort((a, b) => {
+    const aHls = a.url_resolved.toLowerCase().includes('.m3u8') ? 0.5 : 1;
+    const bHls = b.url_resolved.toLowerCase().includes('.m3u8') ? 0.5 : 1;
+    return score(b) * bHls - score(a) * aHls;
+  });
+
+  return httpsCombined.length >= 10
+    ? httpsCombined.slice(0, 500)
+    : [...httpsCombined, ...httpFallbackList].slice(0, 500);
 }
 
 export interface LoadStationsResult {

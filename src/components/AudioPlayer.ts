@@ -1,8 +1,10 @@
+import Hls from 'hls.js';
 import {pingStationClick} from '../services/radioService';
 import {getSavedVolume, saveVolume} from '../services/storage';
 import type {PlayerStatus, Station} from '../types';
-import {escapeHtml, sanitizeExternalUrl} from '../utils/geo';
+import {escapeHtml} from '../utils/geo';
 import {icons} from '../utils/icons';
+import {isUsableFavicon, renderStationAvatar} from '../utils/stationAvatar';
 
 const BASE_URL = (import.meta.env.BASE_URL as string | undefined) || '/';
 
@@ -14,11 +16,13 @@ export interface AudioPlayerCallbacks {
 
 export class AudioPlayerController {
   private audio: HTMLAudioElement;
+  private hls: Hls | null = null;
   private currentStation: Station | null = null;
   private status: PlayerStatus = 'idle';
   private errorMessage = '';
   private volume: number;
   private muted = false;
+  private triedFallbackUrl = false;
 
   private connectTimer: number | null = null;
   private sleepEndTime: number | null = null;
@@ -60,33 +64,106 @@ export class AudioPlayerController {
       return;
     }
 
-    this.clearConnectTimer();
+    this.triedFallbackUrl = false;
     this.currentStation = station;
     this.errorMessage = '';
-    this.setStatus('connecting');
-
-    this.audio.pause();
-    this.audio.src = station.url_resolved || station.url;
-    this.audio.load();
-
     this.updateMediaSessionMetadata(station);
     pingStationClick(station.stationuuid);
 
+    const primaryUrl = station.url_resolved || station.url;
+    this.startStream(primaryUrl);
+  }
+
+  private destroyHls(): void {
+    if (this.hls) {
+      this.hls.destroy();
+      this.hls = null;
+    }
+  }
+
+  private resetAudioElement(): void {
+    this.destroyHls();
+    this.audio.pause();
+    this.audio.removeAttribute('src');
+    this.audio.load();
+  }
+
+  private startStream(streamUrl: string): void {
+    this.clearConnectTimer();
+    this.resetAudioElement();
+    this.setStatus('connecting');
+
     this.connectTimer = window.setTimeout(() => {
       if (this.status === 'connecting') {
-        this.audio.pause();
-        this.setStatus('error', 'La emisora tarda demasiado en responder');
+        this.handleStreamFailure('La emisora tarda demasiado en responder');
       }
-    }, 13000);
+    }, 12000);
 
+    const isHls = /\.m3u8(\?|$)/i.test(streamUrl) || this.currentStation?.codec === 'HLS';
+    const nativeHls = this.audio.canPlayType('application/vnd.apple.mpegurl') !== '';
+
+    if (isHls && !nativeHls && Hls.isSupported()) {
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+        manifestLoadingMaxRetry: 1,
+        levelLoadingMaxRetry: 1,
+        fragLoadingMaxRetry: 1,
+      });
+      this.hls = hls;
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        if (this.hls !== hls) return;
+        this.audio.play().catch((err) => {
+          if (err && err.name === 'AbortError') return;
+          this.handleStreamFailure('Emisora no disponible');
+        });
+      });
+
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (this.hls !== hls) return;
+        if (data.fatal) {
+          this.handleStreamFailure('Emisora no disponible');
+        }
+      });
+
+      hls.loadSource(streamUrl);
+      hls.attachMedia(this.audio);
+      return;
+    }
+
+    this.audio.src = streamUrl;
+    this.audio.load();
     const playPromise = this.audio.play();
     if (playPromise && typeof playPromise.catch === 'function') {
       playPromise.catch((err) => {
         if (err && err.name === 'AbortError') return;
-        this.clearConnectTimer();
-        this.setStatus('error', 'Emisora no disponible o bloqueada');
+        this.handleStreamFailure('Emisora no disponible');
       });
     }
+  }
+
+  private handleStreamFailure(reason: string): void {
+    this.clearConnectTimer();
+    const st = this.currentStation;
+    const altUrl = st?.url?.trim();
+    const isHttpsPage = window.location.protocol === 'https:';
+
+    if (
+      st &&
+      !this.triedFallbackUrl &&
+      altUrl &&
+      altUrl !== st.url_resolved &&
+      (!isHttpsPage || altUrl.startsWith('https://')) &&
+      !/\.(pls|m3u)(\?|$)/i.test(altUrl)
+    ) {
+      this.triedFallbackUrl = true;
+      this.startStream(altUrl);
+      return;
+    }
+
+    this.resetAudioElement();
+    this.setStatus('error', reason);
   }
 
   public togglePlayPause(): void {
@@ -100,29 +177,30 @@ export class AudioPlayerController {
 
   public resume(): void {
     if (!this.currentStation) return;
-    this.clearConnectTimer();
+    this.triedFallbackUrl = false;
     this.errorMessage = '';
-    this.setStatus('connecting');
-    if (!this.audio.src || this.status === 'error') {
-      this.audio.src = this.currentStation.url_resolved || this.currentStation.url;
-      this.audio.load();
+    if (this.hls || !this.audio.src || this.status === 'error') {
+      this.startStream(this.currentStation.url_resolved || this.currentStation.url);
+      return;
     }
+
+    this.clearConnectTimer();
+    this.setStatus('connecting');
     this.connectTimer = window.setTimeout(() => {
       if (this.status === 'connecting') {
-        this.audio.pause();
-        this.setStatus('error', 'Emisora no disponible');
+        this.handleStreamFailure('Emisora no disponible');
       }
-    }, 13000);
+    }, 12000);
 
     this.audio.play().catch((err) => {
       if (err && err.name === 'AbortError') return;
-      this.clearConnectTimer();
-      this.setStatus('error', 'No se pudo reanudar la emisión');
+      this.handleStreamFailure('No se pudo reanudar la emisión');
     });
   }
 
   public pause(): void {
     this.clearConnectTimer();
+    this.destroyHls();
     this.audio.pause();
     if (this.currentStation) {
       this.setStatus('paused');
@@ -180,9 +258,10 @@ export class AudioPlayerController {
     });
 
     this.audio.addEventListener('error', () => {
-      this.clearConnectTimer();
-      if (!this.currentStation) return;
-      this.setStatus('error', 'Emisora no disponible');
+      if (!this.currentStation || this.status === 'idle' || this.status === 'paused' || this.status === 'error') {
+        return;
+      }
+      this.handleStreamFailure('Emisora no disponible');
     });
   }
 
@@ -199,9 +278,9 @@ export class AudioPlayerController {
 
   private updateMediaSessionMetadata(station: Station): void {
     if (!('mediaSession' in navigator) || typeof MediaMetadata === 'undefined') return;
-    const safeFavicon = sanitizeExternalUrl(station.favicon);
+    const safeFavicon = isUsableFavicon(station.favicon);
     const fallbackIcon = new URL(`${BASE_URL}pwa-192x192.png`, window.location.origin).href;
-    const artworkUrl = safeFavicon && safeFavicon.startsWith('https://') ? safeFavicon : fallbackIcon;
+    const artworkUrl = safeFavicon || fallbackIcon;
     const subtitle = [station.state, station.country].filter(Boolean).join(', ') || 'Radio en directo';
 
     try {
@@ -276,10 +355,7 @@ export class AudioPlayerController {
           ? 'text-rose-700 dark:text-[#fda4af]'
           : 'text-slate-500 dark:text-slate-400';
 
-    const safeFav = sanitizeExternalUrl(st.favicon);
-    const avatarHtml = safeFav
-      ? `<img src="${escapeHtml(safeFav)}" alt="" referrerpolicy="no-referrer" class="w-10 h-10 rounded-xl object-cover bg-slate-100 dark:bg-[#2a3346] shrink-0" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="hidden w-10 h-10 rounded-xl bg-emerald-50 dark:bg-[#2a3346] text-emerald-700 dark:text-[#6ee7b7] items-center justify-center shrink-0">${icons.radio('w-5 h-5')}</div>`
-      : `<div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-[#2a3346] text-emerald-700 dark:text-[#6ee7b7] flex items-center justify-center shrink-0">${icons.radio('w-5 h-5')}</div>`;
+    const avatarHtml = renderStationAvatar(st, 'w-10 h-10', true);
 
     const remainingText =
       this.sleepEndTime !== null
@@ -304,7 +380,7 @@ export class AudioPlayerController {
 
           <canvas data-wave-canvas width="56" height="26" class="hidden sm:block shrink-0" aria-hidden="true"></canvas>
 
-          <button type="button" data-action="toggle-play" aria-label="${isPlaying || isConnecting ? 'Pausar emisora' : 'Reproducir emisora'}" class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center bg-emerald-700 text-white hover:bg-emerald-800 active:bg-emerald-900 dark:bg-[#6ee7b7] dark:text-[#1e2432] dark:hover:bg-[#5cd8a8] dark:active:bg-[#4ac998] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] transition-colors shrink-0">
+          <button type="button" data-action="toggle-play" aria-label="${isPlaying || isConnecting ? 'Pausar emisora' : 'Reproducir emisora'}" class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center bg-emerald-700 text-white hover:bg-emerald-800 active:scale-[0.97] active:bg-emerald-900 dark:bg-[#6ee7b7] dark:text-[#1e2432] dark:hover:bg-[#5cd8a8] dark:active:bg-[#4ac998] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] transition-all shrink-0">
             ${
               isConnecting
                 ? `<span class="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spinner"></span>`

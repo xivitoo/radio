@@ -73,7 +73,7 @@ class RadioApp {
   private recents: Station[] = getRecentStations();
   private connectionMode: ConnectionMode = 'online';
   private userLocation: UserLocation | null = null;
-  private sheetHeight: SheetHeight = 'mid';
+  private sheetHeight: SheetHeight = 'full';
   private copiedFeedback = false;
 
   private map!: CanvasMap;
@@ -86,6 +86,7 @@ class RadioApp {
   private desktopContentEl!: HTMLElement;
   private mobileContentEl!: HTMLElement;
   private mobileSheetEl!: HTMLElement;
+  private sheetToggleIconEl!: HTMLElement;
   private mobileMiniSlot!: HTMLElement;
   private desktopMiniSlot!: HTMLElement;
   private countryBtnEl!: HTMLButtonElement;
@@ -120,17 +121,17 @@ class RadioApp {
     this.root.innerHTML = `
       <div class="relative flex h-dvh w-full overflow-hidden bg-slate-50 dark:bg-[#1e2432] text-slate-900 dark:text-slate-100">
         <!-- Desktop Left Sidebar -->
-        <aside class="hidden lg:flex lg:w-[400px] xl:w-[420px] h-full flex-col border-r border-slate-200/80 dark:border-[#343e52] bg-white dark:bg-[#242c3c] shrink-0 z-20">
+        <aside class="hidden lg:flex lg:w-[400px] xl:w-[440px] 2xl:w-[460px] h-full flex-col border-r border-slate-200/80 dark:border-[#343e52] bg-white dark:bg-[#242c3c] shrink-0 z-20">
           <!-- Header: ONLY the app logo -->
-          <div class="px-5 py-3.5 border-b border-slate-100 dark:border-[#343e52] shrink-0 flex items-center">
+          <div class="px-5 xl:px-6 py-4 border-b border-slate-100 dark:border-[#343e52] shrink-0 flex items-center">
             ${renderAppLogo('h-9 w-auto')}
           </div>
 
-          <div data-desktop-content class="flex-1 min-h-0 native-scroll px-5 py-4"></div>
+          <div data-desktop-content class="flex-1 min-h-0 native-scroll px-5 xl:px-6 py-4"></div>
 
-          <div data-desktop-mini-player class="hidden px-4 pb-3 shrink-0"></div>
+          <div data-desktop-mini-player class="hidden px-5 xl:px-6 pb-3.5 shrink-0"></div>
 
-          <nav aria-label="Secciones principales" class="grid grid-cols-3 border-t border-slate-200/80 dark:border-[#343e52] bg-white dark:bg-[#242c3c] shrink-0">
+          <nav aria-label="Secciones principales" class="grid grid-cols-3 border-t border-slate-200/80 dark:border-[#343e52] bg-white dark:bg-[#242c3c] shrink-0 px-2 py-1">
             ${this.renderTabButtons('desktop')}
           </nav>
         </aside>
@@ -139,27 +140,40 @@ class RadioApp {
         <main class="relative flex-1 h-full min-w-0 overflow-hidden">
           <div data-map-container class="absolute inset-0"></div>
 
-          <!-- Top Overlay Controls (NO floating logo on map) -->
-          <div class="pointer-events-none absolute top-0 left-0 right-0 z-20 p-3 sm:p-4 pt-safe flex flex-col gap-2.5 max-w-2xl">
-            <!-- Top Row: Country left, GPS / Theme / Install right -->
-            <div class="pointer-events-auto flex items-center justify-between gap-2">
-              <button
-                type="button"
-                data-country-btn
-                class="min-h-[44px] px-3.5 py-2 rounded-2xl border border-slate-200/90 dark:border-[#343e52] bg-white/95 dark:bg-[#242c3c]/95 backdrop-blur-md shadow-sm flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-[#2a3346] active:bg-slate-100 dark:active:bg-[#343e52] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] transition-colors whitespace-nowrap shrink-0"
-              >
-                <span data-country-flag aria-hidden="true">🌍</span>
-                <span data-country-label class="max-w-[140px] sm:max-w-[200px] truncate">Elegir país</span>
-                ${icons.chevronDown('w-4 h-4 text-slate-400')}
-              </button>
+          <!-- Top Overlay Controls (NO floating logo on map; spans full width on desktop) -->
+          <div class="pointer-events-none absolute top-0 left-0 right-0 z-20 px-4 sm:px-5 lg:px-6 pt-safe-overlay lg:pt-5 flex flex-col gap-2.5">
+            <!-- Top Bar Row -->
+            <div class="flex flex-wrap items-center justify-between gap-2.5">
+              <!-- Left cluster: Country selector + Desktop inline categories -->
+              <div class="pointer-events-auto flex items-center gap-2.5 flex-wrap">
+                <button
+                  type="button"
+                  data-country-btn
+                  class="min-h-[44px] px-3.5 py-2 rounded-2xl border border-slate-200/90 dark:border-[#343e52] bg-white/95 dark:bg-[#242c3c]/95 backdrop-blur-md shadow-sm flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-[#2a3346] active:scale-[0.98] active:bg-slate-100 dark:active:bg-[#343e52] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] transition-all whitespace-nowrap shrink-0 select-none"
+                >
+                  <span data-country-flag aria-hidden="true">🌍</span>
+                  <span data-country-label class="max-w-[140px] sm:max-w-[200px] truncate">Elegir país</span>
+                  ${icons.chevronDown('w-4 h-4 text-slate-400')}
+                </button>
 
-              <div class="flex items-center gap-2 shrink-0">
+                <!-- Desktop inline category pills -->
+                <div
+                  role="group"
+                  aria-label="Filtrar por categoría"
+                  class="hidden xl:inline-flex items-center gap-1 p-1 rounded-2xl border border-slate-200/90 dark:border-[#343e52] bg-white/95 dark:bg-[#242c3c]/95 backdrop-blur-md shadow-sm"
+                >
+                  ${this.renderCategoryButtons()}
+                </div>
+              </div>
+
+              <!-- Right cluster: GPS / Theme / Install -->
+              <div class="pointer-events-auto flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   data-gps-btn
                   aria-label="Centrar en mi ubicación"
                   title="Mi ubicación"
-                  class="min-w-[44px] min-h-[44px] rounded-2xl border border-slate-200/90 dark:border-[#343e52] bg-white/95 dark:bg-[#242c3c]/95 backdrop-blur-md shadow-sm flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-[#2a3346] active:bg-slate-100 dark:active:bg-[#343e52] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] transition-colors"
+                  class="min-w-[44px] min-h-[44px] rounded-2xl border border-slate-200/90 dark:border-[#343e52] bg-white/95 dark:bg-[#242c3c]/95 backdrop-blur-md shadow-sm flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-[#2a3346] active:scale-[0.97] active:bg-slate-100 dark:active:bg-[#343e52] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] transition-all select-none"
                 >
                   ${icons.locate('w-5 h-5')}
                 </button>
@@ -169,26 +183,26 @@ class RadioApp {
                   data-theme-btn
                   aria-label="Cambiar tema claro u oscuro"
                   title="Cambiar tema"
-                  class="min-w-[44px] min-h-[44px] rounded-2xl border border-slate-200/90 dark:border-[#343e52] bg-white/95 dark:bg-[#242c3c]/95 backdrop-blur-md shadow-sm flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-[#2a3346] active:bg-slate-100 dark:active:bg-[#343e52] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] transition-colors"
+                  class="min-w-[44px] min-h-[44px] rounded-2xl border border-slate-200/90 dark:border-[#343e52] bg-white/95 dark:bg-[#242c3c]/95 backdrop-blur-md shadow-sm flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-[#2a3346] active:scale-[0.97] active:bg-slate-100 dark:active:bg-[#343e52] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] transition-all select-none"
                 ></button>
 
                 <div data-pwa-slot class="hidden"></div>
               </div>
             </div>
 
-            <!-- 1-Touch Category Segmented Filter + Discreet Status Line -->
-            <div class="pointer-events-auto flex flex-col gap-1.5 items-start">
+            <!-- Mobile / Compact Desktop Category Row + Status Line -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div
                 role="group"
                 aria-label="Filtrar por categoría"
-                class="inline-flex items-center gap-1 p-1 rounded-2xl border border-slate-200/90 dark:border-[#343e52] bg-white/95 dark:bg-[#242c3c]/95 backdrop-blur-md shadow-sm max-w-full overflow-x-auto native-scroll"
+                class="pointer-events-auto xl:hidden inline-flex items-center gap-1 p-1 rounded-2xl border border-slate-200/90 dark:border-[#343e52] bg-white/95 dark:bg-[#242c3c]/95 backdrop-blur-md shadow-sm max-w-full overflow-x-auto native-scroll self-start"
               >
                 ${this.renderCategoryButtons()}
               </div>
 
               <div
                 data-status-line
-                class="px-3 py-1 rounded-xl bg-white/88 dark:bg-[#242c3c]/88 backdrop-blur-md border border-slate-200/70 dark:border-[#343e52]/80 text-xs font-medium text-slate-700 dark:text-slate-300 font-mono-num shadow-xs"
+                class="pointer-events-auto self-start px-3 py-1 rounded-xl bg-white/90 dark:bg-[#242c3c]/90 backdrop-blur-md border border-slate-200/75 dark:border-[#343e52]/85 text-xs font-medium text-slate-700 dark:text-slate-300 font-mono-num shadow-xs"
               >
                 Cargando emisoras…
               </div>
@@ -197,34 +211,38 @@ class RadioApp {
 
           <!-- Mobile Bottom Sheet + Mini-Player + Fixed Bottom Tab Bar -->
           <div class="lg:hidden fixed inset-x-0 bottom-0 z-30 flex flex-col pointer-events-none">
-            <!-- Draggable Sheet -->
+            <!-- Draggable Sheet (starts expanded at 'full' height so station list is immediately accessible) -->
             <section
               data-mobile-sheet
               aria-label="Lista de emisoras"
-              class="pointer-events-auto flex flex-col rounded-t-3xl border-t border-x border-slate-200/90 dark:border-[#343e52] bg-white/96 dark:bg-[#242c3c]/96 backdrop-blur-md shadow-2xl transition-[height] duration-200 ease-out overflow-hidden"
-              style="height: 44dvh;"
+              class="pointer-events-auto flex flex-col rounded-t-3xl border-t border-x border-slate-200/90 dark:border-[#343e52] bg-white/97 dark:bg-[#242c3c]/97 backdrop-blur-md shadow-[0_-10px_35px_-10px_rgba(15,23,42,0.18)] dark:shadow-[0_-10px_35px_-10px_rgba(0,0,0,0.45)] transition-[height] duration-200 ease-out overflow-hidden"
+              style="height: min(64dvh, calc(100dvh - 210px));"
             >
-              <!-- Touch Drag Handle -->
+              <!-- Touch Drag Handle + Native Toggle -->
               <div
                 data-sheet-handle
                 role="button"
                 tabindex="0"
                 aria-label="Cambiar altura del panel de emisoras"
-                class="w-full py-2.5 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none shrink-0 focus-visible:outline-none"
+                class="w-full px-4 pt-2.5 pb-2 flex items-center justify-between cursor-grab active:cursor-grabbing touch-none shrink-0 focus-visible:outline-none select-none"
               >
+                <span class="w-8"></span>
                 <span class="w-11 h-1.5 rounded-full bg-slate-300 dark:bg-[#4b5770]"></span>
+                <span data-sheet-toggle-icon class="w-8 h-6 flex items-center justify-end text-slate-400 dark:text-slate-400">
+                  ${icons.chevronDown('w-4 h-4')}
+                </span>
               </div>
 
               <div data-mobile-content class="flex-1 min-h-0 native-scroll px-4 pb-3"></div>
             </section>
 
             <!-- Mobile Mini-Player (above fixed tab bar) -->
-            <div data-mobile-mini-player class="pointer-events-auto hidden px-3 py-2 bg-slate-50/92 dark:bg-[#1e2432]/92 backdrop-blur-md border-t border-slate-200/70 dark:border-[#343e52]"></div>
+            <div data-mobile-mini-player class="pointer-events-auto hidden px-3.5 py-2 bg-slate-50/95 dark:bg-[#1e2432]/95 backdrop-blur-md border-t border-slate-200/70 dark:border-[#343e52]"></div>
 
             <!-- Fixed Mobile 3-Tab Bottom Bar -->
             <nav
               aria-label="Navegación móvil"
-              class="pointer-events-auto grid grid-cols-3 border-t border-slate-200/90 dark:border-[#343e52] bg-white/96 dark:bg-[#242c3c]/96 backdrop-blur-md pb-safe"
+              class="pointer-events-auto grid grid-cols-3 border-t border-slate-200/90 dark:border-[#343e52] bg-white/97 dark:bg-[#242c3c]/97 backdrop-blur-md pb-safe-bar pt-1 px-2"
             >
               ${this.renderTabButtons('mobile')}
             </nav>
@@ -250,6 +268,7 @@ class RadioApp {
     this.desktopContentEl = this.root.querySelector('[data-desktop-content]')!;
     this.mobileContentEl = this.root.querySelector('[data-mobile-content]')!;
     this.mobileSheetEl = this.root.querySelector('[data-mobile-sheet]')!;
+    this.sheetToggleIconEl = this.root.querySelector('[data-sheet-toggle-icon]')!;
     this.mobileMiniSlot = this.root.querySelector('[data-mobile-mini-player]')!;
     this.desktopMiniSlot = this.root.querySelector('[data-desktop-mini-player]')!;
     this.countryBtnEl = this.root.querySelector('[data-country-btn]')!;
@@ -258,6 +277,7 @@ class RadioApp {
     this.gpsBtnEl = this.root.querySelector('[data-gps-btn]')!;
 
     this.updateThemeIcon();
+    this.updateSheetToggleIcon();
   }
 
   private renderCategoryButtons(): string {
@@ -273,10 +293,10 @@ class RadioApp {
       <button
         type="button"
         data-category="${cat.id}"
-        class="min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] ${
+        class="min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap shrink-0 select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] ${
           this.activeCategory === cat.id
             ? 'bg-emerald-700 text-white shadow-xs dark:bg-[#6ee7b7] dark:text-[#1e2432]'
-            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#2a3346] active:bg-slate-200 dark:active:bg-[#343e52]'
+            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#2a3346] active:scale-[0.97] active:bg-slate-200 dark:active:bg-[#343e52]'
         }"
       >
         ${cat.label}
@@ -299,13 +319,15 @@ class RadioApp {
         <button
           type="button"
           data-tab-${target}="${t.id}"
-          class="min-h-[54px] py-2 flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] ${
+          class="min-h-[50px] py-1.5 flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-colors select-none rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] ${
             active
               ? 'text-emerald-700 dark:text-[#6ee7b7]'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
           }"
         >
-          ${t.icon}
+          <span class="px-3.5 py-1 rounded-full transition-colors ${
+            active ? 'bg-emerald-50 dark:bg-[#2a3a3a]' : ''
+          }">${t.icon}</span>
           <span>${t.label}</span>
         </button>
       `;
@@ -378,6 +400,9 @@ class RadioApp {
     // Point player controller to active slot if viewport switched
     (this.player as unknown as {miniRoot: HTMLElement}).miniRoot = activeSlot;
     this.player.renderMiniPlayer();
+    if (!isDesktop && this.sheetHeight === 'full') {
+      this.setSheetHeight('full');
+    }
   }
 
   private bindGlobalControls(): void {
@@ -433,10 +458,10 @@ class RadioApp {
   private refreshCategoryButtons(): void {
     this.root.querySelectorAll<HTMLButtonElement>('[data-category]').forEach((btn) => {
       const active = btn.dataset.category === this.activeCategory;
-      btn.className = `min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] ${
+      btn.className = `min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap shrink-0 select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] ${
         active
           ? 'bg-emerald-700 text-white shadow-xs dark:bg-[#6ee7b7] dark:text-[#1e2432]'
-          : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#2a3346] active:bg-slate-200 dark:active:bg-[#343e52]'
+          : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#2a3346] active:scale-[0.97] active:bg-slate-200 dark:active:bg-[#343e52]'
       }`;
     });
   }
@@ -501,16 +526,32 @@ class RadioApp {
 
     handle.addEventListener('pointerup', endDrag);
     handle.addEventListener('pointercancel', endDrag);
+    handle.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const next: SheetHeight =
+          this.sheetHeight === 'min' ? 'mid' : this.sheetHeight === 'mid' ? 'full' : 'min';
+        this.setSheetHeight(next);
+      }
+    });
+  }
+
+  private updateSheetToggleIcon(): void {
+    if (!this.sheetToggleIconEl) return;
+    this.sheetToggleIconEl.style.transform = this.sheetHeight === 'min' ? 'rotate(180deg)' : 'rotate(0deg)';
+    this.sheetToggleIconEl.style.transition = 'transform 180ms ease';
   }
 
   private setSheetHeight(height: SheetHeight): void {
     this.sheetHeight = height;
+    const hasPlayer = Boolean(this.player?.getCurrentStation());
     const mapHeight: Record<SheetHeight, string> = {
-      min: '56px',
+      min: '52px',
       mid: '44dvh',
-      full: '78dvh',
+      full: hasPlayer ? 'min(58dvh, calc(100dvh - 295px))' : 'min(64dvh, calc(100dvh - 210px))',
     };
     this.mobileSheetEl.style.height = mapHeight[height];
+    this.updateSheetToggleIcon();
   }
 
   private async bootstrap(): Promise<void> {

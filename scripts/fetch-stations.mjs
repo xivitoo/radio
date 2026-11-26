@@ -92,6 +92,10 @@ async function main() {
     if (Number(item.lastcheckok) !== 1) continue;
     const streamUrl = (item.url_resolved || item.url || '').trim();
     if (!streamUrl.startsWith('https://')) continue;
+    const lowerUrl = streamUrl.toLowerCase();
+    const codec = (item.codec || '').toUpperCase().trim();
+    if (/\.(pls|m3u|asx|ram|wax)(\?|$)/i.test(lowerUrl)) continue;
+    if (codec === 'FLV' || (codec === 'UNKNOWN' && lowerUrl.endsWith('/chunks.m3u8'))) continue;
     if (seenUrls.has(streamUrl)) continue;
     seenUrls.add(streamUrl);
     const compacted = compactStation(item);
