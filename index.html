@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="es" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Radio by XivIoT – Emisoras en directo y mapa mundial</title>
+    <meta
+      name="description"
+      content="Sintoniza miles de emisoras de radio online en directo, explora radios en el mapa interactivo mundial y guarda tus favoritas incluso offline con Radio by XivIoT."
+    />
+    <meta name="theme-color" content="#1e2432" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Radio XivIoT" />
+
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%icon.svg" />
+    <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
+
+    <!-- OpenGraph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Radio by XivIoT" />
+    <meta property="og:title" content="Radio by XivIoT – Emisoras en directo y mapa mundial" />
+    <meta
+      property="og:description"
+      content="Explora emisoras de radio en directo sobre el mapa mundial, filtra por música, noticias o deportes y guarda tus favoritas."
+    />
+    <meta property="og:url" content="https://xivitoo.github.io/radio/" />
+    <meta property="og:image" content="https://xivitoo.github.io/radio/og-image.png" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Radio by XivIoT – Emisoras en directo y mapa mundial" />
+    <meta
+      name="twitter:description"
+      content="Sintoniza emisoras verificadas de todo el mundo con mapa interactivo, reproductor persistente y modo offline."
+    />
+    <meta name="twitter:image" content="https://xivitoo.github.io/radio/og-image.png" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Theme bootstrap (prevents flash before render) -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('radio_theme');
+          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var isDark = saved === 'dark' || (!saved && prefersDark);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebApplication",
+            "name": "Radio by XivIoT",
+            "url": "https://xivitoo.github.io/radio/",
+            "applicationCategory": "MultimediaApplication",
+            "operatingSystem": "All",
+            "inLanguage": "es",
+            "description": "Aplicación web progresiva para escuchar emisoras de radio en directo de todo el mundo sobre un mapa interactivo.",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "EUR"
+            }
+          },
+          {
+            "@type": "WebSite",
+            "name": "Radio by XivIoT",
+            "url": "https://xivitoo.github.io/radio/",
+            "inLanguage": "es"
+          },
+          {
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "¿Cómo escucho emisoras de otro país en Radio by XivIoT?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Pulsa el botón del país situado en la esquina superior izquierda del mapa para elegir cualquier país y cargar sus emisoras verificadas al instante."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "¿Puedo instalar Radio by XivIoT en mi móvil?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Sí, es una aplicación web progresiva compatible con Android, escritorio y Safari en iOS mediante la opción Instalar o Añadir a pantalla de inicio."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "¿Qué ocurre si pierdo la conexión a internet?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "La aplicación conserva tus emisoras favoritas y te permite consultar la última lista guardada o el respaldo Offline hasta recuperar la conexión Online."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body class="h-full overflow-hidden antialiased bg-slate-50 text-slate-900 dark:bg-[#1e2432] dark:text-slate-100">
+    <div id="app" class="h-full w-full"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

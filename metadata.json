@@ -1,0 +1,6 @@
+{
+  "name": "Radio by XivIoT",
+  "description": "Emisoras de radio en directo de todo el mundo con mapa interactivo, reproductor persistente y modo offline.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
