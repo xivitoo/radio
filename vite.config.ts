@@ -23,7 +23,7 @@ function buildManifestJson(basePath: string): string {
     orientation: 'portrait-primary',
     lang: 'es',
     theme_color: '#1e2432',
-    background_color: '#1d2939',
+    background_color: '#000000',
     categories: ['music', 'news', 'entertainment'],
     icons: [
       {

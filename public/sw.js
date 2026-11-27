@@ -1,4 +1,4 @@
-const CACHE_NAME = 'radio-xiviot-v2';
+const CACHE_NAME = 'radio-xiviot-v3';
 
 function getScopeBase() {
   return self.registration ? self.registration.scope : self.location.origin + '/';
