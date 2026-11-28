@@ -27,6 +27,10 @@ export interface PanelViewState {
   recents: Station[];
   connectionMode: ConnectionMode;
   copiedFeedback: boolean;
+  castConnected: boolean;
+  castDeviceName: string | null;
+  castingStationId: string | null;
+  castHint: string;
 }
 
 export interface PanelActions {
@@ -34,6 +38,8 @@ export interface PanelActions {
   onSortModeChange: (mode: SortMode) => void;
   onSelectStation: (station: Station) => void;
   onPlayStation: (station: Station) => void;
+  onCastStation: (station: Station) => void;
+  onDismissCastHint: () => void;
   onBackFromDetail: () => void;
   onToggleFavoriteWithTag: (station: Station, tag: string) => void;
   onSaveCustomTag: (station: Station, tag: string) => void;
@@ -190,18 +196,48 @@ function renderDetailView(st: Station, state: PanelViewState): string {
         </div>
       </div>
 
-      <button
-        type="button"
-        data-play-station="${st.stationuuid}"
-        class="w-full min-h-[48px] px-4 rounded-2xl flex items-center justify-center gap-2 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] ${
-          isPlaying
-            ? 'bg-amber-100 text-amber-950 hover:bg-amber-200 dark:bg-[#fde68a] dark:text-[#1e2432] dark:hover:bg-[#fcd34d]'
-            : 'bg-emerald-700 text-white hover:bg-emerald-800 active:bg-emerald-900 dark:bg-[#6ee7b7] dark:text-[#1e2432] dark:hover:bg-[#5cd8a8] dark:active:bg-[#4ac998]'
-        }"
-      >
-        ${isPlaying ? icons.pause('w-5 h-5') : icons.play('w-5 h-5')}
-        <span>${isPlaying ? 'Pausar emisión' : 'Escuchar en directo'}</span>
-      </button>
+      <div class="space-y-2">
+        <button
+          type="button"
+          data-play-station="${st.stationuuid}"
+          class="w-full min-h-[48px] px-4 rounded-2xl flex items-center justify-center gap-2 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] ${
+            isPlaying
+              ? 'bg-amber-100 text-amber-950 hover:bg-amber-200 dark:bg-[#fde68a] dark:text-[#1e2432] dark:hover:bg-[#fcd34d]'
+              : 'bg-emerald-700 text-white hover:bg-emerald-800 active:bg-emerald-900 dark:bg-[#6ee7b7] dark:text-[#1e2432] dark:hover:bg-[#5cd8a8] dark:active:bg-[#4ac998]'
+          }"
+        >
+          ${isPlaying ? icons.pause('w-5 h-5') : icons.play('w-5 h-5')}
+          <span>${isPlaying ? 'Pausar emisión' : 'Escuchar en directo'}</span>
+        </button>
+
+        <button
+          type="button"
+          data-action="cast-station"
+          class="w-full min-h-[44px] px-4 rounded-2xl border flex items-center justify-center gap-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] ${
+            state.castConnected && state.castingStationId === st.stationuuid
+              ? 'border-sky-300 bg-sky-50 text-sky-900 hover:bg-sky-100 dark:border-[#415c7d] dark:bg-[#253549] dark:text-[#93c5fd] dark:hover:bg-[#2d415a]'
+              : 'border-slate-200 dark:border-[#343e52] bg-white dark:bg-[#2a3346] text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-[#313c52] active:bg-slate-100 dark:active:bg-[#38445c]'
+          }"
+        >
+          ${icons.cast('w-4 h-4 text-sky-700 dark:text-[#93c5fd]')}
+          <span>${
+            state.castConnected && state.castingStationId === st.stationuuid
+              ? `En ${escapeHtml(state.castDeviceName || 'Google Nest / TV')}`
+              : 'Enviar a Google Nest / TV'
+          }</span>
+        </button>
+
+        ${
+          state.castHint
+            ? `<div class="flex items-center justify-between gap-2 rounded-xl bg-sky-50 dark:bg-[#253042] px-3 py-2 text-xs text-sky-900 dark:text-[#93c5fd]">
+                <span class="leading-snug">${escapeHtml(state.castHint)}</span>
+                <button type="button" data-action="dismiss-cast-hint" aria-label="Cerrar aviso" class="shrink-0 p-1 rounded-lg hover:bg-sky-100 dark:hover:bg-[#314059] focus-visible:outline-none">
+                  ${icons.x('w-3.5 h-3.5')}
+                </button>
+              </div>`
+            : ''
+        }
+      </div>
 
       <!-- Favorite quick tags -->
       <div class="rounded-2xl border border-slate-200/80 dark:border-[#343e52] bg-slate-50/70 dark:bg-[#2a3346]/60 p-3.5 space-y-2.5">
@@ -563,6 +599,14 @@ export function renderPanelContent(container: HTMLElement, state: PanelViewState
     btn.addEventListener('click', () => {
       actions.onFavoriteTagFilterChange(btn.dataset.favFilter || 'ALL');
     });
+  });
+
+  container.querySelector('[data-action="cast-station"]')?.addEventListener('click', () => {
+    if (state.selectedStation) actions.onCastStation(state.selectedStation);
+  });
+
+  container.querySelector('[data-action="dismiss-cast-hint"]')?.addEventListener('click', () => {
+    actions.onDismissCastHint();
   });
 
   container.querySelector('[data-action="copy-link"]')?.addEventListener('click', () => {

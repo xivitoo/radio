@@ -1,4 +1,5 @@
 import Hls from 'hls.js';
+import {type CastStateSnapshot, CastService} from '../services/castService';
 import {pingStationClick} from '../services/radioService';
 import {getSavedVolume, saveVolume} from '../services/storage';
 import type {PlayerStatus, Station} from '../types';
@@ -10,6 +11,7 @@ const BASE_URL = (import.meta.env.BASE_URL as string | undefined) || '/';
 
 export interface AudioPlayerCallbacks {
   onStatusChange: (status: PlayerStatus, station: Station | null, errorMsg?: string) => void;
+  onCastStateChange?: () => void;
   onTryAnotherStation: () => void;
   onSelectStation: (station: Station) => void;
 }
@@ -35,6 +37,15 @@ export class AudioPlayerController {
   private wavePhase = 0;
 
   private callbacks: AudioPlayerCallbacks;
+  private castService: CastService;
+  private castState: CastStateSnapshot = {
+    connected: false,
+    connecting: false,
+    isPaused: false,
+    deviceName: null,
+    castingStationId: null,
+  };
+  private castHint = '';
 
   constructor(miniRoot: HTMLElement, callbacks: AudioPlayerCallbacks) {
     this.miniRoot = miniRoot;
@@ -44,6 +55,17 @@ export class AudioPlayerController {
     this.audio = new Audio();
     this.audio.preload = 'none';
     this.audio.volume = this.volume;
+
+    this.castService = new CastService((nextCastState) => {
+      const wasConnected = this.castState.connected;
+      this.castState = nextCastState;
+      if (wasConnected && !nextCastState.connected && this.currentStation && this.status === 'playing' && !this.audio.src) {
+        this.setStatus('paused');
+      } else {
+        this.renderMiniPlayer();
+      }
+      this.callbacks.onCastStateChange?.();
+    });
 
     this.bindAudioEvents();
     this.bindMediaSession();
@@ -57,6 +79,47 @@ export class AudioPlayerController {
     return this.status;
   }
 
+  public getCastState(): CastStateSnapshot {
+    return {...this.castState};
+  }
+
+  public getCastHint(): string {
+    return this.castHint;
+  }
+
+  public clearCastHint(): void {
+    this.castHint = '';
+    this.renderMiniPlayer();
+    this.callbacks.onCastStateChange?.();
+  }
+
+  public async castStation(station?: Station): Promise<void> {
+    const target = station || this.currentStation;
+    if (!target) return;
+
+    this.castHint = '';
+    if (this.currentStation?.stationuuid !== target.stationuuid) {
+      this.currentStation = target;
+      this.updateMediaSessionMetadata(target);
+      pingStationClick(target.stationuuid);
+    }
+
+    this.renderMiniPlayer();
+    this.callbacks.onCastStateChange?.();
+
+    const result = await this.castService.castStation(target, this.audio);
+    if (result.ok) {
+      this.clearConnectTimer();
+      this.resetAudioElement();
+      this.errorMessage = '';
+      this.setStatus('playing');
+    } else if (result.message) {
+      this.castHint = result.message;
+      this.renderMiniPlayer();
+      this.callbacks.onCastStateChange?.();
+    }
+  }
+
   public playStation(station: Station): void {
     const isSame = this.currentStation?.stationuuid === station.stationuuid;
     if (isSame && (this.status === 'playing' || this.status === 'connecting')) {
@@ -64,6 +127,11 @@ export class AudioPlayerController {
       return;
     }
 
+    if (this.castState.connected) {
+      this.castService.stopCasting();
+    }
+
+    this.castHint = '';
     this.triedFallbackUrl = false;
     this.currentStation = station;
     this.errorMessage = '';
@@ -168,6 +236,12 @@ export class AudioPlayerController {
 
   public togglePlayPause(): void {
     if (!this.currentStation) return;
+    if (this.castState.connected && this.castState.castingStationId === this.currentStation.stationuuid) {
+      if (this.castService.togglePlayPause()) {
+        this.setStatus(this.castState.isPaused ? 'paused' : 'playing');
+        return;
+      }
+    }
     if (this.status === 'playing' || this.status === 'connecting') {
       this.pause();
     } else if (this.status === 'paused' || this.status === 'error') {
@@ -177,6 +251,12 @@ export class AudioPlayerController {
 
   public resume(): void {
     if (!this.currentStation) return;
+    if (this.castState.connected && this.castState.castingStationId === this.currentStation.stationuuid) {
+      if (this.castState.isPaused && this.castService.togglePlayPause()) {
+        this.setStatus('playing');
+      }
+      return;
+    }
     this.triedFallbackUrl = false;
     this.errorMessage = '';
     if (this.hls || !this.audio.src || this.status === 'error') {
@@ -199,6 +279,12 @@ export class AudioPlayerController {
   }
 
   public pause(): void {
+    if (this.castState.connected && this.currentStation && this.castState.castingStationId === this.currentStation.stationuuid) {
+      if (!this.castState.isPaused && this.castService.togglePlayPause()) {
+        this.setStatus('paused');
+        return;
+      }
+    }
     this.clearConnectTimer();
     this.destroyHls();
     this.audio.pause();
@@ -335,25 +421,30 @@ export class AudioPlayerController {
 
     this.miniRoot.classList.remove('hidden');
     const st = this.currentStation;
-    const isPlaying = this.status === 'playing';
-    const isConnecting = this.status === 'connecting';
-    const isError = this.status === 'error';
+    const isCastingThis = this.castState.connected && this.castState.castingStationId === st.stationuuid;
+    const isPlaying = isCastingThis ? !this.castState.isPaused : this.status === 'playing';
+    const isConnecting = this.castState.connecting || (!isCastingThis && this.status === 'connecting');
+    const isError = !isCastingThis && this.status === 'error';
 
-    const statusLabel = isPlaying
-      ? 'En directo'
-      : isConnecting
-        ? 'Conectando…'
-        : isError
-          ? 'Emisora no disponible'
-          : 'En pausa';
+    const statusLabel = isCastingThis
+      ? `${this.castState.isPaused ? 'En pausa · ' : ''}${this.castState.deviceName || 'Google Nest / TV'}`
+      : isPlaying
+        ? 'En directo'
+        : isConnecting
+          ? 'Conectando…'
+          : isError
+            ? 'Emisora no disponible'
+            : 'En pausa';
 
-    const statusColor = isPlaying
-      ? 'text-emerald-700 dark:text-[#6ee7b7]'
-      : isConnecting
-        ? 'text-amber-700 dark:text-[#fde68a]'
-        : isError
-          ? 'text-rose-700 dark:text-[#fda4af]'
-          : 'text-slate-500 dark:text-slate-400';
+    const statusColor = isCastingThis
+      ? 'text-sky-700 dark:text-[#93c5fd]'
+      : isPlaying
+        ? 'text-emerald-700 dark:text-[#6ee7b7]'
+        : isConnecting
+          ? 'text-amber-700 dark:text-[#fde68a]'
+          : isError
+            ? 'text-rose-700 dark:text-[#fda4af]'
+            : 'text-slate-500 dark:text-slate-400';
 
     const avatarHtml = renderStationAvatar(st, 'w-10 h-10', true);
 
@@ -366,7 +457,7 @@ export class AudioPlayerController {
 
     this.miniRoot.innerHTML = `
       <div class="rounded-2xl border border-slate-200/90 dark:border-[#343e52] bg-white/95 dark:bg-[#242c3c]/95 backdrop-blur-md shadow-lg p-3 transition-colors">
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2.5">
           <button type="button" data-action="open-detail" class="flex items-center gap-2.5 min-w-0 flex-1 text-left rounded-xl p-1 -m-1 hover:bg-slate-50 dark:hover:bg-[#2a3346] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] transition-colors">
             ${avatarHtml}
             <div class="min-w-0 flex-1">
@@ -379,6 +470,20 @@ export class AudioPlayerController {
           </button>
 
           <canvas data-wave-canvas width="56" height="26" class="hidden sm:block shrink-0" aria-hidden="true"></canvas>
+
+          <button
+            type="button"
+            data-action="cast-current"
+            aria-label="Enviar a Google Nest / TV"
+            title="Enviar a Google Nest / TV"
+            class="min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] ${
+              isCastingThis
+                ? 'bg-sky-100 text-sky-900 hover:bg-sky-200 dark:bg-[#253549] dark:text-[#93c5fd] dark:hover:bg-[#2d415a]'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300 dark:bg-[#2a3346] dark:text-slate-200 dark:hover:bg-[#313c52] dark:active:bg-[#38445c]'
+            }"
+          >
+            ${icons.cast('w-4 h-4')}
+          </button>
 
           <button type="button" data-action="toggle-play" aria-label="${isPlaying || isConnecting ? 'Pausar emisora' : 'Reproducir emisora'}" class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center bg-emerald-700 text-white hover:bg-emerald-800 active:scale-[0.97] active:bg-emerald-900 dark:bg-[#6ee7b7] dark:text-[#1e2432] dark:hover:bg-[#5cd8a8] dark:active:bg-[#4ac998] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-[#6ee7b7] transition-all shrink-0">
             ${
@@ -396,6 +501,17 @@ export class AudioPlayerController {
             ? `<div class="mt-2.5 flex items-center justify-between gap-2 rounded-xl bg-rose-50 dark:bg-[#332732] px-3 py-2 text-xs text-rose-800 dark:text-[#fda4af]">
                 <span class="truncate">${escapeHtml(this.errorMessage || 'Emisora no disponible')}</span>
                 <button type="button" data-action="try-another" class="shrink-0 font-semibold underline hover:no-underline px-2 py-1 rounded-lg hover:bg-rose-100 dark:hover:bg-[#3f2e3c] focus-visible:outline-none">Probar otra</button>
+              </div>`
+            : ''
+        }
+
+        ${
+          this.castHint
+            ? `<div class="mt-2.5 flex items-center justify-between gap-2 rounded-xl bg-sky-50 dark:bg-[#253042] px-3 py-2 text-xs text-sky-900 dark:text-[#93c5fd]">
+                <span class="leading-snug">${escapeHtml(this.castHint)}</span>
+                <button type="button" data-action="dismiss-cast-hint" aria-label="Cerrar aviso" class="shrink-0 p-1 rounded-lg hover:bg-sky-100 dark:hover:bg-[#314059] focus-visible:outline-none">
+                  ${icons.x('w-3.5 h-3.5')}
+                </button>
               </div>`
             : ''
         }
@@ -443,6 +559,12 @@ export class AudioPlayerController {
   private bindMiniEvents(): void {
     this.miniRoot.querySelector('[data-action="open-detail"]')?.addEventListener('click', () => {
       if (this.currentStation) this.callbacks.onSelectStation(this.currentStation);
+    });
+    this.miniRoot.querySelector('[data-action="cast-current"]')?.addEventListener('click', () => {
+      void this.castStation();
+    });
+    this.miniRoot.querySelector('[data-action="dismiss-cast-hint"]')?.addEventListener('click', () => {
+      this.clearCastHint();
     });
     this.miniRoot.querySelector('[data-action="toggle-play"]')?.addEventListener('click', () => {
       this.togglePlayPause();

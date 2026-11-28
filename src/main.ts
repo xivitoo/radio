@@ -359,6 +359,10 @@ class RadioApp {
         this.syncMiniPlayerSlot();
         this.renderPanels();
       },
+      onCastStateChange: () => {
+        this.syncMiniPlayerSlot();
+        this.renderPanels();
+      },
       onTryAnotherStation: () => {
         const currentId = this.player.getCurrentStation()?.stationuuid;
         const pool = this.filteredStations.length > 1 ? this.filteredStations : this.allStations;
@@ -744,6 +748,7 @@ class RadioApp {
   }
 
   private renderPanels(): void {
+    const castState = this.player.getCastState();
     const state: PanelViewState = {
       activeTab: this.activeTab,
       selectedStation: this.selectedStation,
@@ -759,6 +764,10 @@ class RadioApp {
       recents: this.recents,
       connectionMode: this.connectionMode,
       copiedFeedback: this.copiedFeedback,
+      castConnected: castState.connected,
+      castDeviceName: castState.deviceName,
+      castingStationId: castState.castingStationId,
+      castHint: this.player.getCastHint(),
     };
 
     const actions: PanelActions = {
@@ -772,6 +781,14 @@ class RadioApp {
       },
       onSelectStation: (st) => this.handleSelectStation(st, true),
       onPlayStation: (st) => this.handlePlayStation(st),
+      onCastStation: (st) => {
+        this.recents = pushRecentStation(st);
+        document.title = `${st.name} · Radio by XivIoT`;
+        void this.player.castStation(st);
+      },
+      onDismissCastHint: () => {
+        this.player.clearCastHint();
+      },
       onBackFromDetail: () => {
         this.selectedStation = null;
         this.map.setSelectedStation(null);

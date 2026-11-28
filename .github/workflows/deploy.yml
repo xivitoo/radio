@@ -49,15 +49,18 @@ jobs:
         id: stations-cache
         uses: actions/cache@v4
         with:
-          path: public/data/stations-es.json
-          key: stations-es-v1-${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}-${{ github.run_id }}
+          path: |
+            public/data/stations-es.json
+            public/stream.json
+            public/radio.m3u
+          key: stations-es-v2-${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}-${{ github.run_id }}
           restore-keys: |
-            stations-es-v1-false-
-            stations-es-v1-true-
-            stations-es-v1-
+            stations-es-v2-false-
+            stations-es-v2-true-
+            stations-es-v2-
 
       - name: Refresh static stations snapshot on schedule or when missing
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || !hashFiles('public/data/stations-es.json')
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || !hashFiles('public/data/stations-es.json') || !hashFiles('public/stream.json') || !hashFiles('public/radio.m3u')
         run: node scripts/fetch-stations.mjs || true
 
       - name: Build application for GitHub Pages
